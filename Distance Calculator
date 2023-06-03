@@ -1,95 +1,57 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset='utf-8' />
-  <title>Distance Calculator</title>
-  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
-  <script src='https://api.mapbox.com/mapbox-gl-js/v2.4.1/mapbox-gl.js'></script>
-  <link href='https://api.mapbox.com/mapbox-gl-js/v2.4.1/mapbox-gl.css' rel='stylesheet' />
+  <title>Leaflet Map with Distance Calculator Widget</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    body { margin: 0; padding: 0; }
-    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    #map {
+      height: 400px;
+    }
   </style>
 </head>
 <body>
-  <div id='map'></div>
+  <div id="map"></div>
+  <form id="distance-form">
+    <label for="location1">Location 1:</label>
+    <input type="text" id="location1" placeholder="Enter location 1" required />
+    <br />
+    <label for="location2">Location 2:</label>
+    <input type="text" id="location2" placeholder="Enter location 2" required />
+    <br />
+    <button type="submit">Calculate Distance</button>
+  </form>
+  <div id="result"></div>
 
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    mapboxgl.accessToken = 'pk.eyJ1IjoibmlraGl0YXNyZXlhIiwiYSI6ImNsZ2s2NTJzdzFjMnMzZnBudzJvcTd3NzAifQ.mrkzWt82u8aWZcL45LMwdw'; // Replace with your Mapbox access token
+    // Initialize the map
+    var map = L.map('map').setView([latitude, longitude], zoom);
 
-    var map = new mapboxgl.Map({
-      container: 'map',
-      style: 'mapbox://styles/mapbox/streets-v11',
-      center: [144.946457,-37.840935], // Initial map center
-      zoom: 9 // Initial map zoom level
-    });
-
-    var locations = []; // Array to store user locations
-    var markerLayer = new mapboxgl.Layer({ // Layer for markers
-      id: 'markers',
-      type: 'symbol',
-      source: {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: []
-        }
-      },
-      layout: {
-        'icon-image': 'circle-15',
-        'icon-size': 1.5
-      }
-    });
-
-    map.on('load', function () {
-      map.addLayer(markerLayer);
-
-      map.on('click', function (e) {
-        if (locations.length >= 2) {
-          locations = []; // Clear locations if there are already two
-          markerLayer.setGeoJSON({
-            type: 'FeatureCollection',
-            features: []
-          });
-        }
-
-        var lngLat = e.lngLat;
-        var popup = new mapboxgl.Popup().setLngLat(lngLat).addTo(map);
-        popup.on('close', function () {
-          locations.push(lngLat);
-          if (locations.length === 2) {
-            calculateDistance(locations);
-          }
-        });
+    // Add the map layer from QGIS on GitHub (replace 'URL_TO_GEOJSON' with the actual URL)
+    var qgisLayer = L.geoJSON(null).addTo(map);
+    fetch('URL_TO_GEOJSON')
+      .then(response => response.json())
+      .then(data => {
+        qgisLayer.addData(data);
+        map.fitBounds(qgisLayer.getBounds());
       });
-    });
 
-    function calculateDistance(locations) {
-      // Read the CSV file with distance data
-      // Assuming the CSV has columns "source", "target", and "distance"
-      d3.csv('distance_data.csv', function (error, data) {
-        if (error) throw error;
+    // Function to calculate the distance between two locations
+    function calculateDistance() {
+      var location1 = L.latLng(parseFloat(document.getElementById('location1').value));
+      var location2 = L.latLng(parseFloat(document.getElementById('location2').value));
+      var distance = location1.distanceTo(location2);
 
-        var source = locations[0];
-        var target = locations[1];
-
-        var distance = null;
-
-        // Search for the distance between source and target in the CSV data
-        for (var i = 0; i < data.length; i++) {
-          if (data[i].source === source.toString() && data[i].target === target.toString()) {
-            distance = data[i].distance;
-            break;
-          }
-        }
-
-        if (distance !== null) {
-          var popup = new mapboxgl.Popup().setLngLat(target).setHTML('Distance: ' + distance + ' km').addTo(map);
-        } else {
-          var popup = new mapboxgl.Popup().setLngLat(target).setHTML('Distance not found in CSV').addTo(map);
-        }
-      });
+      // Display the distance result
+      document.getElementById('result').innerHTML = 'Distance: ' + distance.toFixed(2) + ' meters';
     }
+
+    // Event listener for the form submission
+    document.getElementById('distance-form').addEventListener('submit', function(event) {
+      event.preventDefault(); // Prevent form submission
+
+      calculateDistance();
+    });
   </script>
 </body>
 </html>
